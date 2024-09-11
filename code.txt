@@ -4,13 +4,16 @@ class DatabaseEmptyExcetion(BaseException):
   def __str__(self):
     return self.message
 
+
+
 class Player:
-    def __init__(self, name, score):
+    def __init__(self, name, score = 0):
         self.name = name
         self.score = score
 
-    def __str__(self):
-        return f"{self.name} : {self.score}"
+    # def __str__(self):
+    #     return f"{self.name} : {self.score}"
+
 
 
 class Database:
@@ -20,11 +23,20 @@ class Database:
   def getAll(self):
     try:
       with open(self.name, "r") as file:
-        lines = file.readlines()
+        lines = file.read().splitlines()
     except FileNotFoundError:
       lines = []
       print(f"Le fichier {self.name} n'existe pas")
     return lines
+
+  def destroyDatabse(self):
+    try:
+      with open(self.name, "w") as file:
+        file.write("")
+    except FileNotFoundError:
+      print(f"Impossible de détruire le fichier {self.name}")
+
+
 
 class WordsDatabase(Database):
   def __init__(self, name= 'dico/dico.txt'):
@@ -38,17 +50,23 @@ class PlayDatabase(Database):
   def add(self, player):
     try:
       with open(self.name, "a") as file:
-        file.write(f"{player.name} {player.score}\n")
+        file.write(f"{player.name}:{player.score}\n")
     except FileNotFoundError:
       print(f"Impossible d'ajouter {player.name} Le fichier {self.name} n'existe pas")
 
   def updateScore(self, player):
     try:
       players = self.getAll()
+
+      if len(players) == 0:
+        self.add(player)
+        return
+
       for index, line in enumerate(players):
         if line.split(":")[0] == player.name:
-          if player.score < int(line.split(":")[1]):
-            print(f"Le score de {player.score} est deja le meilleur score")
+          actualScore = int(line.split(':')[1])
+          if player.score < actualScore:
+            print(f"Le score de {actualScore} est deja le meilleur score")
             return
           players[index] = f"{player.name}:{player.score}\n"
           break
@@ -67,16 +85,9 @@ class PlayDatabase(Database):
       print(f"Impossible de créer le fichier {self.name}")
 
 
-  def destroyDatabse(self):
-    try:
-      with open(self.name, "w") as file:
-        file.write("")
-    except FileNotFoundError:
-      print(f"Impossible de supprimer les données du fichier {self.name}")
-
-
 
 import random as rd
+import sys
 
 class Game:
   def __init__(self):
@@ -85,6 +96,8 @@ class Game:
 
 
   def hideWord(name):
+    if len(name) < 3:
+      return name
     return "**" + name[2:-1] + "*"
 
   def getWord(self):
@@ -94,11 +107,50 @@ class Game:
         raise DatabaseEmptyExcetion("Votre dicionnaire de mot est vide")
 
       return rd.choice(words)
-    except DatabaseEmptyExcetion as e:
-      print(e)
-    except FileNotFoundError as e:
-      print(e)
+    except (DatabaseEmptyExcetion, FileNotFoundError, Exception) as e:
+      sys.exit(e)
+
+  def isWordCorrect(guessedWord, realWord):
+    return guessedWord.lower() == realWord.lower()
+
+
+  def ask(self):
+    word = self.getWord()
+    hiddendWord = Game.hideWord(word)
+    print(f"Le mot caché est : {hiddendWord}")
+    guessedWord = input("Quel est le mot Q pour quitter: ")
+
+    return (word, guessedWord)
+
+
+  def play(self):
+    name = input("Quel est votre nom: ")
+    tentative = 2
+    player = Player(name)
+    while tentative > 0:
+      word, guessedWord = self.ask()
+      if guessedWord.lower() == "q":
+        break
+
+      if Game.isWordCorrect(word, guessedWord):
+        tentative = 2
+        player.score += 3
+      else:
+        tentative -= 1
+        if player.score > 0:
+          player.score -= 1
+
+      print(f"Score: {player.score}, tentative restante: {tentative}")
+
+    self.playDatabase.updateScore(player)
+    print(f"Votre score final est de {player.score}")
+
+
+
 
 
 game = Game()
-game.getWord()
+game.play()
+
+# playDatabase = PlayDatabase()
+# playDatabase.destroyDatabse()
