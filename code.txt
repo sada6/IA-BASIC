@@ -1,0 +1,104 @@
+class DatabaseEmptyExcetion(BaseException):
+  def __init__(self, message = "Votre base de donnee est vide"):
+    self.message = message
+  def __str__(self):
+    return self.message
+
+class Player:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def __str__(self):
+        return f"{self.name} : {self.score}"
+
+
+class Database:
+  def __init__(self, name):
+    self.name = name
+
+  def getAll(self):
+    try:
+      with open(self.name, "r") as file:
+        lines = file.readlines()
+    except FileNotFoundError:
+      lines = []
+      print(f"Le fichier {self.name} n'existe pas")
+    return lines
+
+class WordsDatabase(Database):
+  def __init__(self, name= 'dico/dico.txt'):
+    super().__init__(name)
+
+
+class PlayDatabase(Database):
+  def __init__(self, name= 'utilisateur/users.txt'):
+    super().__init__(name)
+
+  def add(self, player):
+    try:
+      with open(self.name, "a") as file:
+        file.write(f"{player.name} {player.score}\n")
+    except FileNotFoundError:
+      print(f"Impossible d'ajouter {player.name} Le fichier {self.name} n'existe pas")
+
+  def updateScore(self, player):
+    try:
+      players = self.getAll()
+      for index, line in enumerate(players):
+        if line.split(":")[0] == player.name:
+          if player.score < int(line.split(":")[1]):
+            print(f"Le score de {player.score} est deja le meilleur score")
+            return
+          players[index] = f"{player.name}:{player.score}\n"
+          break
+
+      self.create(players)
+    except FileNotFoundError:
+      print(f"Impossible de mettre à jour le score de {player.name} Le fichier {self.name} n'existe pas")
+
+
+  def create(self, players):
+    try:
+      with open(self.name, "w") as file:
+        file.write("\n".join(players))
+
+    except FileNotFoundError:
+      print(f"Impossible de créer le fichier {self.name}")
+
+
+  def destroyDatabse(self):
+    try:
+      with open(self.name, "w") as file:
+        file.write("")
+    except FileNotFoundError:
+      print(f"Impossible de supprimer les données du fichier {self.name}")
+
+
+
+import random as rd
+
+class Game:
+  def __init__(self):
+    self.dico = WordsDatabase()
+    self.playDatabase = PlayDatabase()
+
+
+  def hideWord(name):
+    return "**" + name[2:-1] + "*"
+
+  def getWord(self):
+    try:
+      words = self.dico.getAll()
+      if len(words) == 0:
+        raise DatabaseEmptyExcetion("Votre dicionnaire de mot est vide")
+
+      return rd.choice(words)
+    except DatabaseEmptyExcetion as e:
+      print(e)
+    except FileNotFoundError as e:
+      print(e)
+
+
+game = Game()
+game.getWord()
